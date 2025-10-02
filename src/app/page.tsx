@@ -12,14 +12,51 @@ function HomeContent() {
   const [amount, setAmount] = useState('');
   const [recipientAddress, setRecipientAddress] = useState('');
   const [txStatus, setTxStatus] = useState('');
+  const [usdcBalance, setUsdcBalance] = useState('0');
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const { account, signAndSubmitTransaction } = useWallet();
 
   const config = new AptosConfig({ network: Network.TESTNET });
   const aptos = new Aptos(config);
 
+  // Fetch USDC balance
+  const fetchUsdcBalance = async () => {
+    if (!account?.address) return;
+    
+    setIsLoadingBalance(true);
+    try {
+      const balance = await aptos.getCurrentFungibleAssetBalances({
+        options: {
+          where: {
+            owner_address: { _eq: account.address.toString() },
+            asset_type: { _eq: USDC_ADDRESS }
+          }
+        }
+      });
+      
+      if (balance && balance.length > 0) {
+        // Convert from smallest unit to USDC (divide by 1,000,000)
+        const usdcAmount = (parseInt(balance[0].amount) / 1_000_000).toFixed(6);
+        setUsdcBalance(usdcAmount);
+      } else {
+        setUsdcBalance('0');
+      }
+    } catch (error) {
+      console.error('Error fetching USDC balance:', error);
+      setUsdcBalance('Error');
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
   // Update the connection status when the current account changes
   useEffect(() => {
     setConnected(!!account?.address);
+    if (account?.address) {
+      fetchUsdcBalance();
+    } else {
+      setUsdcBalance('0');
+    }
   }, [account]);
 
   const handleSendTokens = async () => {
@@ -46,6 +83,11 @@ function HomeContent() {
       await aptos.waitForTransaction({ transactionHash: result.hash });
 
       setTxStatus(`Transaction successful. Hash: ${result.hash}`);
+      // Refresh balance after successful transaction
+      await fetchUsdcBalance();
+      // Clear form
+      setAmount('');
+      setRecipientAddress('');
     } catch (error) {
       console.error('Error:', error);
       setTxStatus(
@@ -60,7 +102,21 @@ function HomeContent() {
         <h1 className="text-4xl font-bold mb-8">Aptos USDC Sender (Testnet)</h1>
         <WalletSelector />
         {connected && account && (
-          <p className="mt-4">Connected: {account.address?.toString() || 'Unknown'}</p>
+          <div className="mt-4 text-center">
+            <p>Connected: {account.address?.toString() || 'Unknown'}</p>
+            <div className="mt-2 p-3 bg-gray-100 rounded-lg">
+              <p className="text-lg font-semibold text-black">
+                USDC Balance: {isLoadingBalance ? 'Loading...' : `${usdcBalance} USDC`}
+              </p>
+              <button 
+                onClick={fetchUsdcBalance}
+                disabled={isLoadingBalance}
+                className="mt-1 text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                Refresh Balance
+              </button>
+            </div>
+          </div>
         )}
         <div className="mt-8">
           <input
