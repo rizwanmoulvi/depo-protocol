@@ -5,7 +5,7 @@ export const MODULE_ADDRESS = process.env.NEXT_PUBLIC_MODULE_ADDRESS ?? "0xd4263
 export const APTOS_API_KEY = process.env.NEXT_PUBLIC_APTOS_API_KEY;
 
 // Rent Escrow Contract Constants
-export const RENT_ESCROW_MODULE = "rent_escrow";
+export const RENT_ESCROW_MODULE = "rent_escrow_v3";
 export const RENT_ESCROW_ADDRESS = "0xd4263e7234e7e2c768b6e33b34a8a275de1cb8b41f395bf344d38f05ea6bbc82";
 
 // USDC Token Address on Testnet

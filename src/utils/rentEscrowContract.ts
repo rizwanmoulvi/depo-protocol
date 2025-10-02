@@ -1,4 +1,4 @@
-import { Aptos, AptosConfig, Network, InputSubmitTransactionData } from "@aptos-labs/ts-sdk";
+import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 import { RENT_ESCROW_ADDRESS, USDC_ADDRESS } from "@/constants";
 
 const config = new AptosConfig({ network: Network.TESTNET });
@@ -31,6 +31,26 @@ export interface EscrowRegistry {
 /**
  * Create a new escrow agreement (called by landlord)
  */
+/**
+ * Initialize the Aave-integrated escrow contract
+ */
+export const initializeContract = async (
+  { signAndSubmitTransaction }: { signAndSubmitTransaction: any }
+) => {
+  const transaction = {
+    data: {
+      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::initialize`,
+      typeArguments: [],
+      functionArguments: [],
+    },
+  };
+
+  return await signAndSubmitTransaction(transaction);
+};
+
+/**
+ * Create a new escrow agreement
+ */
 export const createEscrow = async (
   landlordSigner: any,
   tenant: string,
@@ -43,7 +63,7 @@ export const createEscrow = async (
 ) => {
   const transaction = {
     data: {
-      function: `${RENT_ESCROW_ADDRESS}::rent_escrow::create_escrow`,
+      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::create_escrow`,
       typeArguments: [],
       functionArguments: [
         tenant,
@@ -69,7 +89,7 @@ export const signEscrow = async (
 ) => {
   const transaction = {
     data: {
-      function: `${RENT_ESCROW_ADDRESS}::rent_escrow::sign_escrow`,
+      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::sign_escrow`,
       typeArguments: [],
       functionArguments: [escrowId.toString()],
     },
@@ -88,7 +108,7 @@ export const depositFunds = async (
 ) => {
   const transaction = {
     data: {
-      function: `${RENT_ESCROW_ADDRESS}::rent_escrow::deposit_funds`,
+      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::deposit_funds`,
       typeArguments: [],
       functionArguments: [escrowId.toString(), usdcMetadata],
     },
@@ -107,7 +127,7 @@ export const settleEscrow = async (
 ) => {
   const transaction = {
     data: {
-      function: `${RENT_ESCROW_ADDRESS}::rent_escrow::settle_escrow`,
+      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::settle_escrow`,
       typeArguments: [],
       functionArguments: [escrowId.toString(), usdcMetadata],
     },
@@ -125,7 +145,7 @@ export const getEscrow = async (escrowId: number): Promise<EscrowAgreement | nul
     
     const result = await aptos.view({
       payload: {
-        function: `${RENT_ESCROW_ADDRESS}::rent_escrow::get_escrow`,
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_escrow`,
         typeArguments: [],
         functionArguments: [escrowId.toString()],
       },
@@ -173,7 +193,7 @@ export const getEscrowsByLandlord = async (landlord: string): Promise<number[]> 
     
     const result = await aptos.view({
       payload: {
-        function: `${RENT_ESCROW_ADDRESS}::rent_escrow::get_escrows_by_landlord`,
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_landlord_escrows`,
         typeArguments: [],
         functionArguments: [landlord],
       },
@@ -199,7 +219,7 @@ export const getEscrowsByTenant = async (tenant: string): Promise<number[]> => {
     
     const result = await aptos.view({
       payload: {
-        function: `${RENT_ESCROW_ADDRESS}::rent_escrow::get_escrows_by_tenant`,
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_tenant_escrows`,
         typeArguments: [],
         functionArguments: [tenant],
       },
@@ -222,7 +242,7 @@ export const getResourceAccountAddress = async (): Promise<string> => {
   try {
     const result = await aptos.view({
       payload: {
-        function: `${RENT_ESCROW_ADDRESS}::rent_escrow::get_resource_account_address`,
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_resource_account_address`,
         typeArguments: [],
         functionArguments: [],
       },
@@ -242,7 +262,7 @@ export const getContractUsdcBalance = async (): Promise<number> => {
   try {
     const result = await aptos.view({
       payload: {
-        function: `${RENT_ESCROW_ADDRESS}::rent_escrow::get_contract_usdc_balance`,
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_contract_usdc_balance`,
         typeArguments: [],
         functionArguments: [USDC_ADDRESS],
       },

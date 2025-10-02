@@ -13,6 +13,7 @@ import {
   getEscrow,
   createEscrow,
   signEscrow,
+  initializeContract,
   depositFunds,
   settleEscrow,
   formatUsdcAmount,
@@ -39,14 +40,20 @@ const EscrowDashboard: React.FC = () => {
   const [userEscrows, setUserEscrows] = useState<EscrowAgreement[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [formData, setFormData] = useState<EscrowFormData>({
-    tenant: '',
-    propertyName: '',
-    propertyAddress: '',
-    securityDeposit: '',
-    monthlyRent: '',
-    startDate: '',
-    endDate: ''
+  const [formData, setFormData] = useState<EscrowFormData>(() => {
+    const now = new Date();
+    const startTime = new Date(now.getTime() + 2 * 60 * 1000); // 2 minutes from now
+    const endTime = new Date(now.getTime() + 10 * 60 * 1000); // 10 minutes from now
+    
+    return {
+      tenant: '',
+      propertyName: '',
+      propertyAddress: '',
+      securityDeposit: '',
+      monthlyRent: '',
+      startDate: startTime.toISOString().slice(0, 16), // Format for datetime-local
+      endDate: endTime.toISOString().slice(0, 16)
+    };
   });
 
   useEffect(() => {
@@ -84,6 +91,29 @@ const EscrowDashboard: React.FC = () => {
       toast({
         title: "Error",
         description: "Failed to load escrows",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInitializeContract = async () => {
+    if (!account?.address || !signAndSubmitTransaction) return;
+
+    setIsLoading(true);
+    try {
+      await initializeContract({ signAndSubmitTransaction });
+      
+      toast({
+        title: "Success",
+        description: "Contract initialized successfully!",
+      });
+    } catch (error) {
+      console.error('Error initializing contract:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to initialize contract",
         variant: "destructive",
       });
     } finally {
@@ -277,10 +307,19 @@ const EscrowDashboard: React.FC = () => {
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Rent Escrow Dashboard</h2>
-        <Button onClick={() => setShowCreateForm(!showCreateForm)}>
-          {showCreateForm ? 'Cancel' : 'Create New Escrow'}
-        </Button>
+        <h2 className="text-2xl font-bold">Rent Escrow Dashboard (Aave-Integrated)</h2>
+        <div className="space-x-2">
+          <Button 
+            variant="outline" 
+            onClick={handleInitializeContract}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Initializing...' : 'Initialize Contract'}
+          </Button>
+          <Button onClick={() => setShowCreateForm(!showCreateForm)}>
+            {showCreateForm ? 'Cancel' : 'Create New Escrow'}
+          </Button>
+        </div>
       </div>
 
       {showCreateForm && (
@@ -343,20 +382,20 @@ const EscrowDashboard: React.FC = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="startDate">Start Date</Label>
+                <Label htmlFor="startDate">Start Date & Time</Label>
                 <Input
                   id="startDate"
-                  type="date"
+                  type="datetime-local"
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="endDate">End Date</Label>
+                <Label htmlFor="endDate">End Date & Time</Label>
                 <Input
                   id="endDate"
-                  type="date"
+                  type="datetime-local"
                   value={formData.endDate}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                   required
@@ -441,6 +480,27 @@ const EscrowDashboard: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                {/* Aave Integration Info */}
+                {parseInt(escrow.aaveSuppliedAmount) > 0 && (
+                  <div className="border-t pt-4 mt-4">
+                    <h4 className="font-medium text-sm mb-2 text-blue-600">🏦 Aave Yield Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="font-medium">Supplied to Aave</p>
+                        <p className="text-green-600">${formatUsdcAmount(escrow.aaveSuppliedAmount)} USDC</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">Supply Date</p>
+                        <p>{formatDate(escrow.aaveSupplyTimestamp)}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">Earning Yield</p>
+                        <p className="text-green-600">✓ Active</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {actions.length > 0 && (
                   <div className="flex gap-2">
