@@ -1,0 +1,108 @@
+#[test_only]
+module message_board_addr::rent_escrow_resource_tests {
+    use std::string;
+    use std::timestamp;
+    use std::signer;
+    use aptos_framework::account;
+    use aptos_framework::aptos_coin;
+    use aptos_framework::coin;
+    use aptos_framework::primary_fungible_store;
+    use message_board_addr::rent_escrow;
+
+    #[test]
+    public fun test_resource_account_setup() {
+        let admin = account::create_signer_with_capability(&account::create_test_signer_cap(@message_board_addr));
+        
+        // Initialize timestamp
+        timestamp::set_time_has_started_for_testing(&account::create_signer_with_capability(
+            &account::create_test_signer_cap(@0x1)
+        ));
+
+        // Initialize the module
+        rent_escrow::init_module_for_test(&admin);
+
+        // Verify resource account was created and can be accessed
+        let resource_account_address = rent_escrow::get_resource_account_address();
+        
+        // Verify resource account address is different from module address
+        assert!(resource_account_address != @message_board_addr, 0);
+        assert!(resource_account_address != signer::address_of(&admin), 1);
+        
+        // Verify platform treasury is set to admin address
+        let platform_treasury = rent_escrow::get_platform_treasury();
+        assert!(platform_treasury == signer::address_of(&admin), 2);
+    }
+
+    #[test]
+    public fun test_full_escrow_lifecycle_with_resource_account() {
+        let admin = account::create_signer_with_capability(&account::create_test_signer_cap(@message_board_addr));
+        let landlord = account::create_signer_with_capability(&account::create_test_signer_cap(@0x123));
+        let tenant = account::create_signer_with_capability(&account::create_test_signer_cap(@0x456));
+        
+        // Initialize timestamp
+        timestamp::set_time_has_started_for_testing(&account::create_signer_with_capability(
+            &account::create_test_signer_cap(@0x1)
+        ));
+
+        // Initialize the module
+        rent_escrow::init_module_for_test(&admin);
+
+        // Create escrow
+        let property_name = string::utf8(b"Test Apartment");
+        let property_address = string::utf8(b"123 Test St");
+        let security_deposit = 2000_000_000; // 2000 USDC
+        let monthly_rent = 1500_000_000; // 1500 USDC per month
+        let start_date = timestamp::now_seconds() + 86400; // Start tomorrow
+        let end_date = start_date + (365 * 86400); // 1 year lease
+
+        rent_escrow::create_escrow(
+            &landlord,
+            signer::address_of(&tenant),
+            property_name,
+            property_address,
+            security_deposit,
+            monthly_rent,
+            start_date,
+            end_date
+        );
+
+        // Tenant signs the escrow
+        rent_escrow::sign_escrow(&tenant, 1);
+
+        // Verify both parties have signed
+        let (_, _, _, _, _, _, _, _, _, landlord_signed, tenant_signed, deposited_amount, _, _, settled, _) = rent_escrow::get_escrow(1);
+        assert!(landlord_signed == true, 3);
+        assert!(tenant_signed == true, 4);
+        assert!(deposited_amount == 0, 5);
+        assert!(settled == false, 6);
+
+        // Verify resource account exists and is ready
+        let resource_account_address = rent_escrow::get_resource_account_address();
+        assert!(resource_account_address != @0x0, 7);
+    }
+
+    #[test]
+    public fun test_platform_treasury_update() {
+        let admin = account::create_signer_with_capability(&account::create_test_signer_cap(@message_board_addr));
+        let new_treasury = account::create_signer_with_capability(&account::create_test_signer_cap(@0x999));
+        
+        // Initialize timestamp
+        timestamp::set_time_has_started_for_testing(&account::create_signer_with_capability(
+            &account::create_test_signer_cap(@0x1)
+        ));
+
+        // Initialize the module
+        rent_escrow::init_module_for_test(&admin);
+
+        // Verify initial treasury
+        let initial_treasury = rent_escrow::get_platform_treasury();
+        assert!(initial_treasury == signer::address_of(&admin), 0);
+
+        // Update treasury
+        rent_escrow::update_platform_treasury(&admin, signer::address_of(&new_treasury));
+
+        // Verify treasury was updated
+        let updated_treasury = rent_escrow::get_platform_treasury();
+        assert!(updated_treasury == signer::address_of(&new_treasury), 1);
+    }
+}

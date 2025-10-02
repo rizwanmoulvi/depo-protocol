@@ -1,0 +1,72 @@
+#[test_only]
+module message_board_addr::rent_escrow_tests {
+    use std::string;
+    use std::timestamp;
+    use std::signer;
+    use aptos_framework::account;
+    use message_board_addr::rent_escrow;
+
+    #[test]
+    public fun test_create_escrow() {
+        let admin = account::create_signer_with_capability(&account::create_test_signer_cap(@message_board_addr));
+        let landlord = account::create_signer_with_capability(&account::create_test_signer_cap(@0x123));
+        let _tenant = account::create_signer_with_capability(&account::create_test_signer_cap(@0x456));
+        
+        // Initialize timestamp
+        timestamp::set_time_has_started_for_testing(&account::create_signer_with_capability(
+            &account::create_test_signer_cap(@0x1)
+        ));
+
+        // Initialize the module
+        rent_escrow::init_module_for_test(&admin);
+
+        // Create escrow
+        let property_name = string::utf8(b"Beautiful Apartment");
+        let property_address = string::utf8(b"123 Main St, City, State");
+        let security_deposit = 2000_000_000; // 2000 USDC
+        let monthly_rent = 1500_000_000; // 1500 USDC per month
+        let start_date = timestamp::now_seconds() + 86400; // Start tomorrow
+        let end_date = start_date + (365 * 86400); // 1 year lease
+
+        rent_escrow::create_escrow(
+            &landlord,
+            signer::address_of(&_tenant),
+            property_name,
+            property_address,
+            security_deposit,
+            monthly_rent,
+            start_date,
+            end_date
+        );
+
+        // Verify escrow was created
+        let (
+            id,
+            escrow_landlord,
+            escrow_tenant,
+            _escrow_property_name,
+            _escrow_property_address,
+            escrow_security_deposit,
+            escrow_monthly_rent,
+            _escrow_start_date,
+            _escrow_end_date,
+            landlord_signed,
+            tenant_signed,
+            deposited_amount,
+            _aave_atoken_amount, // New field
+            _aave_supplied,
+            settled,
+            _created_at
+        ) = rent_escrow::get_escrow(1);
+
+        assert!(id == 1, 0);
+        assert!(escrow_landlord == signer::address_of(&landlord), 1);
+        assert!(escrow_tenant == signer::address_of(&_tenant), 2);
+        assert!(escrow_security_deposit == security_deposit, 3);
+        assert!(escrow_monthly_rent == monthly_rent, 4);
+        assert!(landlord_signed == true, 5);
+        assert!(tenant_signed == false, 6);
+        assert!(deposited_amount == 0, 7);
+        assert!(settled == false, 8);
+    }
+}
