@@ -16,7 +16,6 @@ import {
   initializeContract,
   depositToAave,
   verifyAaveDeposit,
-  getEscrowDepositStatus,
   settleEscrow,
   formatUsdcAmount,
   formatDate,

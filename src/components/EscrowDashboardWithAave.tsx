@@ -9,10 +9,6 @@ import {
   getEscrowsByLandlord, 
   getEscrowsByTenant, 
   getEscrow,
-  signEscrow,
-  depositToAave,
-  verifyAaveDeposit,
-  settleEscrow 
 } from '@/utils/rentEscrowContract';
 import { 
   getEstimatedEscrowYield,
@@ -58,41 +54,41 @@ export const EscrowDashboardWithAave: React.FC = () => {
       
       // Fetch escrow IDs based on user type
       const escrowIds = userType === 'landlord' 
-        ? await getEscrowsByLandlord(account.address)
-        : await getEscrowsByTenant(account.address);
+        ? await getEscrowsByLandlord(account.address.toString())
+        : await getEscrowsByTenant(account.address.toString());
 
       // Fetch detailed data for each escrow
       const escrowDetails = await Promise.all(
-        escrowIds.map(async (id: string) => {
-          const details = await getEscrow(id);
+        (escrowIds as unknown as number[]).map(async (id) => {
+          const details = await getEscrow(Number(id));
           
           // Fetch estimated yield for active escrows
           let estimatedYield = 0;
-          if (details.depositedAmount > 0 && !details.settled) {
+          if (details && Number(details.depositedAmount) > 0 && !details.settled) {
             try {
-              estimatedYield = await getEstimatedEscrowYield(id);
+              estimatedYield = await getEstimatedEscrowYield(id.toString());
             } catch (error) {
               console.error(`Error fetching yield for escrow ${id}:`, error);
             }
           }
 
           return {
-            id,
-            landlord: details.landlord,
-            tenant: details.tenant,
-            propertyName: details.propertyName,
-            propertyAddress: details.propertyAddress,
-            securityDeposit: details.securityDeposit,
-            monthlyRent: details.monthlyRent,
-            startDate: details.startDate,
-            endDate: details.endDate,
-            landlordSigned: details.landlordSigned,
-            tenantSigned: details.tenantSigned,
-            depositedAmount: details.depositedAmount,
-            aaveAtokenAmount: details.aaveAtokenAmount,
-            aaveSupplied: details.aaveSupplied,
-            settled: details.settled,
-            createdAt: details.createdAt,
+            id: id.toString(),
+            landlord: details ? details.landlord : '',
+            tenant: details ? details.tenant : '',
+            propertyName: details ? details.propertyName : '',
+            propertyAddress: details ? details.propertyAddress : '',
+            securityDeposit: details ? Number(details.securityDeposit) : 0,
+            monthlyRent: details ? Number(details.monthlyRent) : 0,
+            startDate: details ? Number(details.startDate) : 0,
+            endDate: details ? Number(details.endDate) : 0,
+            landlordSigned: details ? details.landlordSigned : false,
+            tenantSigned: details ? details.tenantSigned : false,
+            depositedAmount: details ? Number(details.depositedAmount) : 0,
+            aaveAtokenAmount: 0, // Default value since this property doesn't exist in the contract
+            aaveSupplied: false, // Default value since this property doesn't exist in the contract
+            settled: details ? details.settled : false,
+            createdAt: details ? Number(details.createdAt) : 0,
             estimatedYield
           };
         })

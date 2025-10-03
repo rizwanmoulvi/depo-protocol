@@ -301,7 +301,7 @@ export const getEscrowDepositStatus = async (escrowId: number): Promise<{isDepos
     
     return {
       isDeposited: result[0] as boolean,
-      depositAmount: result[1].toString()
+      depositAmount: result[1] ? result[1].toString() : "0"
     };
   } catch (error) {
     console.error("Error getting escrow deposit status:", error);

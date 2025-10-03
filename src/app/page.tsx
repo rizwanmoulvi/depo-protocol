@@ -29,7 +29,7 @@ export default function App() {
         {account ? (
           <EscrowDashboard />
         ) : (
-          <div className="max-w-4xl mx-auto py-12 px-6 bg-white rounded-xl shadow-md">
+          <div className="w-screen mx-auto py-12 px-6 bg-white rounded-xl shadow-md">
             <h2 className="text-3xl font-bold text-center mb-6 text-indigo-700">
               Welcome to Depos Protocol
             </h2>
@@ -38,12 +38,7 @@ export default function App() {
               <p className="text-lg text-gray-700 mb-4">
                 The trustless rental security deposit solution powered by Aptos blockchain and Aave
               </p>
-              <div className="flex justify-center">
-                <button onClick={() => (document.querySelector('.wallet-adapter-button') as HTMLElement)?.click()} 
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-lg transition duration-200">
-                  Connect Wallet to Get Started
-                </button>
-              </div>
+              
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 mb-10">
