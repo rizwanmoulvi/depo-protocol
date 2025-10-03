@@ -103,14 +103,18 @@ export const signEscrow = async (
  */
 // ...existing code...
 
-export const depositFunds = async (
+/**
+ * Make a direct deposit to Aave
+ * This function calls Aave's supply function to deposit aa_USDC to the resource account
+ */
+export const depositToAave = async (
   tenantSigner: any,
   escrowId: number,
   amount: number,
   usdcMetadata: string = USDC_ADDRESS
 ) => {
   // Add debugging logs
-  console.log("depositFunds called with:", {
+  console.log("depositToAave called with:", {
     tenantSigner: !!tenantSigner,
     escrowId,
     amount,
@@ -144,6 +148,7 @@ export const depositFunds = async (
   console.log("Security deposit amount:", securityDepositAmount);
   console.log("Total amount provided:", amount);
 
+  // Call Aave's supply function
   const transaction = {
     data: {
       function: `0xbd7912c555a06809c2e385eab635ff0ef52b1fa062ce865c785c67694a12bb12::supply_logic::supply`,
@@ -151,8 +156,56 @@ export const depositFunds = async (
       functionArguments: [
         usdcMetadata, // asset address (USDC)
         securityDepositAmount.toString(), // only security deposit amount
-        "0xa97a2d191cd633b9f78e990eeeb31a158da02be2fb45260865fa4c175d363b8a", // on_behalf_of (your contract address)
+        "0x7f561777e5d6e4d83ce439b1aadca568ccb060b3462adcae934f4dc11ddf4c7c", // on_behalf_of (your contract address)
         "0" // referral_code
+      ],
+    },
+  };
+
+  return await tenantSigner.signAndSubmitTransaction(transaction);
+};
+
+/**
+ * Verify that an Aave deposit has been made (called by tenant after depositing to Aave)
+ */
+export const verifyAaveDeposit = async (
+  tenantSigner: any,
+  escrowId: number,
+  depositAmount: number
+) => {
+  console.log("verifyAaveDeposit called with:", {
+    tenantSigner: !!tenantSigner,
+    escrowId,
+    depositAmount
+  });
+
+  // Validate inputs
+  if (!tenantSigner) {
+    throw new Error("Tenant signer is required");
+  }
+  
+  if (typeof escrowId !== 'number' || escrowId < 0) {
+    throw new Error("Valid escrow ID is required");
+  }
+  
+  if (typeof depositAmount !== 'number' || depositAmount <= 0 || isNaN(depositAmount)) {
+    console.error("Amount validation failed:", { depositAmount, type: typeof depositAmount, isNaN: isNaN(depositAmount) });
+    throw new Error(`Valid deposit amount is required. Received: ${depositAmount} (type: ${typeof depositAmount})`);
+  }
+
+  // Get escrow details to extract security deposit amount
+  const escrowData = await getEscrow(escrowId);
+  if (!escrowData) {
+    throw new Error("Escrow not found");
+  }
+
+  const transaction = {
+    data: {
+      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::verify_aave_deposit`,
+      typeArguments: [],
+      functionArguments: [
+        escrowId.toString(),
+        depositAmount.toString(),
       ],
     },
   };
@@ -224,6 +277,38 @@ export const getEscrow = async (escrowId: number): Promise<EscrowAgreement | nul
   } catch (error) {
     console.error("Error fetching escrow:", error);
     return null;
+  }
+};
+
+/**
+ * Get the deposit status for an escrow agreement
+ * @param escrowId ID of the escrow agreement
+ * @returns Object containing isDeposited status and deposit amount
+ */
+export const getEscrowDepositStatus = async (escrowId: number): Promise<{isDeposited: boolean, depositAmount: string}> => {
+  try {
+    const result = await aptos.view({
+      payload: {
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_escrow_deposit_status`,
+        typeArguments: [],
+        functionArguments: [escrowId.toString()]
+      },
+    });
+    
+    if (!result || !Array.isArray(result) || result.length < 2) {
+      throw new Error("Invalid response format from get_escrow_deposit_status");
+    }
+    
+    return {
+      isDeposited: result[0] as boolean,
+      depositAmount: result[1].toString()
+    };
+  } catch (error) {
+    console.error("Error getting escrow deposit status:", error);
+    return {
+      isDeposited: false,
+      depositAmount: "0"
+    };
   }
 };
 

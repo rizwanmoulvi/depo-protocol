@@ -10,9 +10,10 @@ import {
   getEscrowsByTenant, 
   getEscrow,
   signEscrow,
-  depositFunds,
+  depositToAave,
+  verifyAaveDeposit,
   settleEscrow 
-} from '@/utils/escrowContract';
+} from '@/utils/rentEscrowContract';
 import { 
   getEstimatedEscrowYield,
   calculateLandlordYield,

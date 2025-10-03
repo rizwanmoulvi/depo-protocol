@@ -4,7 +4,7 @@ version = "3.0.0"
 authors = []
 
 [addresses]
-rent_escrow_addr = "_"
+rent_escrow_addr = "0x4b8ac7a06a42d43fc3c3858a001dede0c91b8a3ea78297eea2bb26b26bc3cf3a"
 
 [dev-addresses]
 
