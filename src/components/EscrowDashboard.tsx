@@ -22,6 +22,7 @@ import {
   isEscrowTermEnded,
   EscrowAgreement
 } from '@/utils/rentEscrowContract';
+import { USDC_ADDRESS } from '@/constants';
 
 interface EscrowFormData {
   tenant: string;
@@ -198,33 +199,43 @@ const EscrowDashboard: React.FC = () => {
     }
   };
 
-  const handleDepositFunds = async (escrowId: string) => {
-    if (!signAndSubmitTransaction) return;
+const handleDepositFunds = async (escrowId: string) => {
+  if (!signAndSubmitTransaction) return;
 
-    setIsLoading(true);
-    try {
-      await depositFunds(
-        { signAndSubmitTransaction },
-        parseInt(escrowId)
-      );
+  setIsLoading(true);
+  try {
+    const escrow = userEscrows.find(e => e.id === escrowId);
+    if (!escrow) throw new Error("Escrow not found");
 
-      toast({
-        title: "Success",
-        description: "Funds deposited successfully!",
-      });
+    // Calculate required deposit amount (security deposit + monthly rent)
+    const securityDeposit = parseInt(escrow.securityDeposit);
+    const monthlyRent = parseInt(escrow.monthlyRent);
+    const totalAmount = securityDeposit + monthlyRent;
 
-      await loadUserEscrows();
-    } catch (error) {
-      console.error('Error depositing funds:', error);
-      toast({
-        title: "Error",
-        description: "Failed to deposit funds",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    await depositFunds(
+      { signAndSubmitTransaction },
+      parseInt(escrowId),
+      totalAmount,
+      USDC_ADDRESS
+    );
+
+    toast({
+      title: "Success",
+      description: "Funds deposited successfully!",
+    });
+
+    await loadUserEscrows();
+  } catch (error) {
+    console.error("Error depositing funds:", error);
+    toast({
+      title: "Error",
+      description: "Failed to deposit funds",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleSettleEscrow = async (escrowId: string) => {
     if (!signAndSubmitTransaction) return;
