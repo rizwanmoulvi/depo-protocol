@@ -1,9 +1,9 @@
 // Aave Integration Utilities for Frontend
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
+import { RENT_ESCROW_ADDRESS, RENT_ESCROW_MODULE } from "@/constants";
 
-// For now, using placeholder contract address - update after deployment
-const CONTRACT_ADDRESS = "0x123"; // Replace with actual deployed contract address
-const MODULE_NAME = "rent_escrow";
+// Use contract address from constants
+const CONTRACT_ADDRESS = RENT_ESCROW_ADDRESS;
 
 export interface AavePosition {
   principalSupplied: number;
@@ -27,7 +27,7 @@ export const getAavePosition = async (): Promise<AavePosition> => {
 
   const resource = await aptos.view({
     payload: {
-      function: `${CONTRACT_ADDRESS}::rent_escrow::get_aave_position`,
+      function: `${CONTRACT_ADDRESS}::${RENT_ESCROW_MODULE}::get_aave_position`,
       functionArguments: [],
     },
   });
@@ -48,7 +48,7 @@ export const getAaveYield = async (): Promise<number> => {
 
   const resource = await aptos.view({
     payload: {
-      function: `${CONTRACT_ADDRESS}::rent_escrow::get_aave_yield`,
+      function: `${CONTRACT_ADDRESS}::${RENT_ESCROW_MODULE}::get_aave_yield`,
       functionArguments: [],
     },
   });
@@ -65,7 +65,7 @@ export const getCurrentAaveApy = async (): Promise<number> => {
 
   const resource = await aptos.view({
     payload: {
-      function: `${CONTRACT_ADDRESS}::rent_escrow::get_current_aave_apy`,
+      function: `${CONTRACT_ADDRESS}::${RENT_ESCROW_MODULE}::get_current_aave_apy`,
       functionArguments: [],
     },
   });
@@ -83,7 +83,7 @@ export const getTotalAaveValue = async (): Promise<number> => {
 
   const resource = await aptos.view({
     payload: {
-      function: `${CONTRACT_ADDRESS}::rent_escrow::get_total_aave_value`,
+      function: `${CONTRACT_ADDRESS}::${RENT_ESCROW_MODULE}::get_total_aave_value`,
       functionArguments: [],
     },
   });
@@ -100,7 +100,7 @@ export const getEstimatedEscrowYield = async (escrowId: string): Promise<number>
 
   const resource = await aptos.view({
     payload: {
-      function: `${CONTRACT_ADDRESS}::rent_escrow::get_estimated_escrow_yield`,
+      function: `${CONTRACT_ADDRESS}::${RENT_ESCROW_MODULE}::get_estimated_escrow_yield`,
       functionArguments: [escrowId],
     },
   });
@@ -135,7 +135,7 @@ export const getEscrowYieldInfo = async (escrowId: string): Promise<EscrowYieldI
 
   const escrowResource = await aptos.view({
     payload: {
-      function: `${CONTRACT_ADDRESS}::rent_escrow::get_escrow`,
+      function: `${CONTRACT_ADDRESS}::${RENT_ESCROW_MODULE}::get_escrow`,
       functionArguments: [escrowId],
     },
   });

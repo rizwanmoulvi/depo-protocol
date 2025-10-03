@@ -124,35 +124,25 @@ module rent_escrow_addr::rent_escrow_v3 {
         escrow.tenant_signed = true;
     }
 
-    /// Deposit USDC (called by tenant after signing)
-    public entry fun deposit_funds(
+    /// Verify Aave deposit (called by tenant after depositing to Aave)
+    /// This function verifies that the tenant has deposited aa_USDC to the resource account through Aave
+    /// The actual deposit happens outside this function directly through Aave
+    public entry fun verify_aave_deposit(
         tenant: &signer,
         escrow_id: u64,
-        usdc_metadata: Object<Metadata>,
+        deposit_amount: u64,
     ) acquires EscrowRegistry {
         let tenant_addr = signer::address_of(tenant);
         let registry = borrow_global_mut<EscrowRegistry>(@rent_escrow_addr);
-        
-        let resource_account_address = registry.resource_account_address;
         let escrow = get_escrow_mut(registry, escrow_id);
         
         assert!(escrow.tenant == tenant_addr, E_NOT_AUTHORIZED);
         assert!(escrow.landlord_signed && escrow.tenant_signed, E_NOT_BOTH_SIGNED);
         assert!(escrow.deposited_amount == 0, E_ALREADY_DEPOSITED);
+        assert!(deposit_amount >= escrow.security_deposit, E_NOT_DEPOSITED);
 
-        let deposit_amount = escrow.security_deposit;
-
-        // Transfer USDC from tenant to resource account
-        let usdc_to_deposit = primary_fungible_store::withdraw(
-            tenant,
-            usdc_metadata,
-            deposit_amount
-        );
-
-        // Deposit to resource account for secure storage
-        primary_fungible_store::deposit(resource_account_address, usdc_to_deposit);
-
-        // Update escrow
+        // Just update the escrow state to acknowledge the Aave deposit
+        // The actual deposit happens outside this function
         escrow.deposited_amount = deposit_amount;
     }
 
@@ -334,6 +324,17 @@ module rent_escrow_addr::rent_escrow_v3 {
             escrow.deposited_amount > 0, // has_deposit
             current_time, // current_timestamp
             escrow.end_date // end_timestamp
+        )
+    }
+
+    #[view]
+    public fun get_escrow_deposit_status(escrow_id: u64): (bool, u64) acquires EscrowRegistry {
+        let registry = borrow_global<EscrowRegistry>(@rent_escrow_addr);
+        let escrow = get_escrow_ref(registry, escrow_id);
+        
+        (
+            escrow.deposited_amount > 0, // is_deposited
+            escrow.deposited_amount // deposit_amount
         )
     }
 }

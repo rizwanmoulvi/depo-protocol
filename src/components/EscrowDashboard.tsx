@@ -14,7 +14,9 @@ import {
   createEscrow,
   signEscrow,
   initializeContract,
-  depositFunds,
+  depositToAave,
+  verifyAaveDeposit,
+  getEscrowDepositStatus,
   settleEscrow,
   formatUsdcAmount,
   formatDate,
@@ -199,7 +201,7 @@ const EscrowDashboard: React.FC = () => {
     }
   };
 
-const handleDepositFunds = async (escrowId: string) => {
+const handleDepositToAave = async (escrowId: string) => {
   if (!signAndSubmitTransaction) return;
 
   setIsLoading(true);
@@ -212,11 +214,18 @@ const handleDepositFunds = async (escrowId: string) => {
     const monthlyRent = parseInt(escrow.monthlyRent);
     const totalAmount = securityDeposit + monthlyRent;
 
-    await depositFunds(
+    await depositToAave(
       { signAndSubmitTransaction },
       parseInt(escrowId),
       totalAmount,
       USDC_ADDRESS
+    );
+    
+    // After successful deposit to Aave, verify it in the contract
+    await verifyAaveDeposit(
+      { signAndSubmitTransaction },
+      parseInt(escrowId),
+      securityDeposit
     );
 
     toast({
@@ -295,7 +304,7 @@ const handleDepositFunds = async (escrowId: string) => {
 
     // Deposit action (only for tenant)
     if (userRole === 'tenant' && escrow.landlordSigned && escrow.tenantSigned && parseInt(escrow.depositedAmount) === 0) {
-      actions.push({ label: 'Deposit Funds', action: () => handleDepositFunds(escrow.id), variant: 'default' });
+      actions.push({ label: 'Deposit to Aave', action: () => handleDepositToAave(escrow.id), variant: 'default' });
     }
 
     // Settle action (available to both after term ends)
