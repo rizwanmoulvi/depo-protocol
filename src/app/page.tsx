@@ -14,10 +14,10 @@ export default function App() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Rent Escrow Protocol
+                Depos Protocol
               </h1>
               <p className="text-gray-600">
-                Secure rental agreements on Aptos blockchain
+                Secure rental deposits and agreements on Aptos blockchain
               </p>
             </div>
             <WalletSelector />
@@ -31,10 +31,10 @@ export default function App() {
         ) : (
           <div className="text-center py-16">
             <h2 className="text-xl font-semibold mb-4">
-              Welcome to Rent Escrow Protocol
+              Welcome to Depos Protocol
             </h2>
             <p className="text-gray-600 mb-8">
-              Connect your wallet to start creating and managing rental escrows
+              Connect your wallet to start creating and managing rental agreements
             </p>
           </div>
         )}

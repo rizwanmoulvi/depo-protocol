@@ -11,5 +11,8 @@ export const RENT_ESCROW_ADDRESS = "0x4b8ac7a06a42d43fc3c3858a001dede0c91b8a3ea7
 // USDC Token Address on Testnet
 export const USDC_ADDRESS = "0x69091fbab5f7d635ee7ac5098cf0c1efbe31d68fec0f2cd565e8d168daf52832";
 
+// AA_USDC (Aave's interest-bearing USDC) Metadata Object Address
+export const AA_USDC_METADATA = "0x24a204cf49c1f8b365631346a34336398fcea1bde6ee6526ee162af05f367188";
+
 // Platform constants
 export const PLATFORM_FEE_BASIS_POINTS = 500; // 5%
