@@ -101,21 +101,65 @@ export const signEscrow = async (
 /**
  * Deposit funds (called by tenant)
  */
+// ...existing code...
+
 export const depositFunds = async (
   tenantSigner: any,
   escrowId: number,
+  amount: number,
   usdcMetadata: string = USDC_ADDRESS
 ) => {
+  // Add debugging logs
+  console.log("depositFunds called with:", {
+    tenantSigner: !!tenantSigner,
+    escrowId,
+    amount,
+    amountType: typeof amount,
+    usdcMetadata
+  });
+
+  // Validate inputs
+  if (!tenantSigner) {
+    throw new Error("Tenant signer is required");
+  }
+  
+  if (typeof escrowId !== 'number' || escrowId < 0) {
+    throw new Error("Valid escrow ID is required");
+  }
+  
+  if (typeof amount !== 'number' || amount <= 0 || isNaN(amount)) {
+    console.error("Amount validation failed:", { amount, type: typeof amount, isNaN: isNaN(amount) });
+    throw new Error(`Valid amount is required. Received: ${amount} (type: ${typeof amount})`);
+  }
+
+  // Get escrow details to extract security deposit amount
+  const escrowData = await getEscrow(escrowId);
+  if (!escrowData) {
+    throw new Error("Escrow not found");
+  }
+
+  // Extract only the security deposit amount (not rent)
+  const securityDepositAmount = parseInt(escrowData.securityDeposit);
+  
+  console.log("Security deposit amount:", securityDepositAmount);
+  console.log("Total amount provided:", amount);
+
   const transaction = {
     data: {
-      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::deposit_funds`,
+      function: `0xbd7912c555a06809c2e385eab635ff0ef52b1fa062ce865c785c67694a12bb12::supply_logic::supply`,
       typeArguments: [],
-      functionArguments: [escrowId.toString(), usdcMetadata],
+      functionArguments: [
+        usdcMetadata, // asset address (USDC)
+        securityDepositAmount.toString(), // only security deposit amount
+        "0xa97a2d191cd633b9f78e990eeeb31a158da02be2fb45260865fa4c175d363b8a", // on_behalf_of (your contract address)
+        "0" // referral_code
+      ],
     },
   };
 
   return await tenantSigner.signAndSubmitTransaction(transaction);
 };
+// ...existing code...
 
 /**
  * Settle escrow (called by landlord or tenant after term ends)
