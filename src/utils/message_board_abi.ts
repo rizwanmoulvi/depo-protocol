@@ -1,1 +1,2 @@
-export const MESSAGE_BOARD_ABI = undefined as const;
+// Using empty object to fix TypeScript build error
+export const MESSAGE_BOARD_ABI = {} as const;

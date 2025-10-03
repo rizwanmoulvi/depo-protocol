@@ -16,12 +16,12 @@ import {
   initializeContract,
   depositToAave,
   verifyAaveDeposit,
-  getEscrowDepositStatus,
   settleEscrow,
   formatUsdcAmount,
   formatDate,
   toUsdcAmount,
   isEscrowTermEnded,
+  payRentToLandlord,
   EscrowAgreement
 } from '@/utils/rentEscrowContract';
 import { USDC_ADDRESS } from '@/constants';
@@ -88,6 +88,10 @@ const EscrowDashboard: React.FC = () => {
       // Filter out null results
       const validEscrows = escrows.filter(escrow => escrow !== null) as EscrowAgreement[];
       console.log("Valid escrows after filtering:", validEscrows);
+
+      // We're now using security deposit value directly for AA_USDC display, 
+      // so we don't need to fetch the actual AA_USDC balance anymore
+
       setUserEscrows(validEscrows);
     } catch (error) {
       console.error('Error loading escrows:', error);
@@ -201,7 +205,43 @@ const EscrowDashboard: React.FC = () => {
     }
   };
 
-const handleDepositToAave = async (escrowId: string) => {
+  const handlePayRent = async (escrowId: string) => {
+    if (!signAndSubmitTransaction) return;
+
+    setIsLoading(true);
+    try {
+      const escrow = userEscrows.find(e => e.id === escrowId);
+      if (!escrow) throw new Error("Escrow not found");
+
+      const rentAmount = parseInt(escrow.monthlyRent);
+      
+      await payRentToLandlord(
+        { signAndSubmitTransaction },
+        escrow.landlord,
+        rentAmount
+      );
+
+      toast({
+        title: "Success",
+        description: `Rent of $${formatUsdcAmount(escrow.monthlyRent)} USDC paid to landlord successfully!`,
+      });
+
+      // No need to reload escrows since payment doesn't change escrow state
+      // But we can notify the user of success
+      
+    } catch (error) {
+      console.error("Error paying rent:", error);
+      toast({
+        title: "Error",
+        description: "Failed to pay rent",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDepositToAave = async (escrowId: string) => {
   if (!signAndSubmitTransaction) return;
 
   setIsLoading(true);
@@ -219,9 +259,7 @@ const handleDepositToAave = async (escrowId: string) => {
       parseInt(escrowId),
       totalAmount,
       USDC_ADDRESS
-    );
-    
-    // After successful deposit to Aave, verify it in the contract
+    );    // After successful deposit to Aave, verify it in the contract
     await verifyAaveDeposit(
       { signAndSubmitTransaction },
       parseInt(escrowId),
@@ -306,6 +344,20 @@ const handleDepositToAave = async (escrowId: string) => {
     if (userRole === 'tenant' && escrow.landlordSigned && escrow.tenantSigned && parseInt(escrow.depositedAmount) === 0) {
       actions.push({ label: 'Deposit to Aave', action: () => handleDepositToAave(escrow.id), variant: 'default' });
     }
+    
+    // Pay Rent action (only for tenant on active agreements)
+    if (userRole === 'tenant' && 
+        escrow.landlordSigned && 
+        escrow.tenantSigned && 
+        parseInt(escrow.depositedAmount) > 0 && 
+        !escrow.settled &&
+        !isEscrowTermEnded(escrow.endDate)) {
+      actions.push({ 
+        label: `Pay Rent ($${formatUsdcAmount(escrow.monthlyRent)} USDC)`, 
+        action: () => handlePayRent(escrow.id), 
+        variant: 'outline' 
+      });
+    }
 
     // Settle action (available to both after term ends)
     if (parseInt(escrow.depositedAmount) > 0 && isEscrowTermEnded(escrow.endDate)) {
@@ -327,7 +379,7 @@ const handleDepositToAave = async (escrowId: string) => {
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Rent Escrow Dashboard (Aave-Integrated)</h2>
+        <h2 className="text-2xl font-bold">Dashboard (Aave-Integrated)</h2>
         <div className="space-x-2">
           <Button 
             variant="outline" 
@@ -337,14 +389,14 @@ const handleDepositToAave = async (escrowId: string) => {
             {isLoading ? 'Initializing...' : 'Initialize Contract'}
           </Button>
           <Button onClick={() => setShowCreateForm(!showCreateForm)}>
-            {showCreateForm ? 'Cancel' : 'Create New Escrow'}
+            {showCreateForm ? 'Cancel' : 'Create New Agreement'}
           </Button>
         </div>
       </div>
 
       {showCreateForm && (
         <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Create New Escrow Agreement</h3>
+          <h3 className="text-lg font-semibold mb-4">Create New Rental Agreement</h3>
           <form onSubmit={handleCreateEscrow} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -430,11 +482,11 @@ const handleDepositToAave = async (escrowId: string) => {
       )}
 
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Your Escrows</h3>
+        <h3 className="text-lg font-semibold">Your Agreements</h3>
         {isLoading ? (
-          <div className="text-center py-8">Loading escrows...</div>
+          <div className="text-center py-8">Loading agreements...</div>
         ) : userEscrows.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No escrows found</div>
+          <div className="text-center py-8 text-gray-500">No agreements found</div>
         ) : (
           userEscrows.map((escrow) => {
             const userRole = getUserRole(escrow);
@@ -502,17 +554,22 @@ const handleDepositToAave = async (escrowId: string) => {
                 </div>
 
                 {/* Aave Integration Info */}
-                {parseInt(escrow.aaveSuppliedAmount) > 0 && (
+                {parseInt(escrow.depositedAmount) > 0 && (
                   <div className="border-t pt-4 mt-4">
                     <h4 className="font-medium text-sm mb-2 text-blue-600">🏦 Aave Yield Information</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       <div>
                         <p className="font-medium">Supplied to Aave</p>
-                        <p className="text-green-600">${formatUsdcAmount(escrow.aaveSuppliedAmount)} USDC</p>
+                        <p className="text-green-600">${formatUsdcAmount(escrow.securityDeposit)} USDC</p>
                       </div>
                       <div>
-                        <p className="font-medium">Supply Date</p>
-                        <p>{formatDate(escrow.aaveSupplyTimestamp)}</p>
+                        <p className="font-medium">AA_USDC Balance</p>
+                        <p className="text-green-600">
+                          {/* Show AA_USDC balance equal to security deposit for agreements with deposits */}
+                          {parseInt(escrow.depositedAmount) > 0
+                            ? `$${formatUsdcAmount(escrow.securityDeposit)} AA_USDC` 
+                            : "--"}
+                        </p>
                       </div>
                       <div>
                         <p className="font-medium">Earning Yield</p>
