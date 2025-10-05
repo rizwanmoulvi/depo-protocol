@@ -24,7 +24,7 @@ import {
   payRentToLandlord,
   EscrowAgreement
 } from '@/utils/rentEscrowContract';
-import { USDC_ADDRESS } from '@/constants';
+import { USDC_ADDRESS, AA_USDC_METADATA } from '@/constants';
 
 interface EscrowFormData {
   tenant: string;
@@ -289,14 +289,22 @@ const EscrowDashboard: React.FC = () => {
 
     setIsLoading(true);
     try {
+      toast({
+        title: "Processing",
+        description: "Step 1/2: Withdrawing funds from Aave. This may take a moment...",
+      });
+
+      // Now using our improved settle function that handles the Aave withdrawal
       await settleEscrow(
         { signAndSubmitTransaction },
-        parseInt(escrowId)
+        parseInt(escrowId),
+        USDC_ADDRESS,
+        AA_USDC_METADATA
       );
 
       toast({
         title: "Success",
-        description: "Escrow settled successfully!",
+        description: "Escrow settled successfully! USDC has been returned to the tenant.",
       });
 
       await loadUserEscrows();
@@ -304,7 +312,7 @@ const EscrowDashboard: React.FC = () => {
       console.error('Error settling escrow:', error);
       toast({
         title: "Error",
-        description: "Failed to settle escrow",
+        description: "Failed to settle escrow. Please try again later.",
         variant: "destructive",
       });
     } finally {
@@ -342,7 +350,7 @@ const EscrowDashboard: React.FC = () => {
 
     // Deposit action (only for tenant)
     if (userRole === 'tenant' && escrow.landlordSigned && escrow.tenantSigned && parseInt(escrow.depositedAmount) === 0) {
-      actions.push({ label: 'Deposit to Aave', action: () => handleDepositToAave(escrow.id), variant: 'default' });
+      actions.push({ label: 'Deposit Funds', action: () => handleDepositToAave(escrow.id), variant: 'default' });
     }
     
     // Pay Rent action (only for tenant on active agreements)

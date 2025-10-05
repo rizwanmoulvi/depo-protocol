@@ -1,4 +1,4 @@
-module rent_escrow_addr::rent_escrow_v3 {
+module rent_escrow_addr::rent_escrow_v4 {
     use std::string::String;
     use std::vector;
     use std::signer;
@@ -10,7 +10,7 @@ module rent_escrow_addr::rent_escrow_v3 {
     use aptos_framework::timestamp;
 
     // Constants
-    const RESOURCE_ACCOUNT_SEED: vector<u8> = b"RENT_ESCROW_V3_RESOURCE_ACCOUNT";
+    const RESOURCE_ACCOUNT_SEED: vector<u8> = b"RENT_ESCROW_V4_RESOURCE_ACCOUNT";
 
     // Error codes
     const E_NOT_AUTHORIZED: u64 = 1;
