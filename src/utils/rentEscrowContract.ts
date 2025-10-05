@@ -39,7 +39,7 @@ export const initializeContract = async (
 ) => {
   const transaction = {
     data: {
-      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::initialize`,
+      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::initialize`,
       typeArguments: [],
       functionArguments: [],
     },
@@ -63,7 +63,7 @@ export const createEscrow = async (
 ) => {
   const transaction = {
     data: {
-      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::create_escrow`,
+      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::create_escrow`,
       typeArguments: [],
       functionArguments: [
         tenant,
@@ -89,7 +89,7 @@ export const signEscrow = async (
 ) => {
   const transaction = {
     data: {
-      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::sign_escrow`,
+      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::sign_escrow`,
       typeArguments: [],
       functionArguments: [escrowId.toString()],
     },
@@ -156,7 +156,7 @@ export const depositToAave = async (
       functionArguments: [
         usdcMetadata, // asset address (USDC)
         securityDepositAmount.toString(), // only security deposit amount
-        "0x7f561777e5d6e4d83ce439b1aadca568ccb060b3462adcae934f4dc11ddf4c7c", // on_behalf_of (your contract address)
+        "0x1ca1be5d42981635e48a8446d82a1b11acb5bed5309f148039baf7aefa96f570", // on_behalf_of (your contract address)
         "0" // referral_code
       ],
     },
@@ -201,7 +201,7 @@ export const verifyAaveDeposit = async (
 
   const transaction = {
     data: {
-      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::verify_aave_deposit`,
+      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::verify_aave_deposit`,
       typeArguments: [],
       functionArguments: [
         escrowId.toString(),
@@ -217,20 +217,68 @@ export const verifyAaveDeposit = async (
 /**
  * Settle escrow (called by landlord or tenant after term ends)
  */
+/**
+ * Settle the escrow agreement
+ * Let the contract handle the Aave withdrawal internally
+ */
 export const settleEscrow = async (
   signer: any,
   escrowId: number,
-  usdcMetadata: string = USDC_ADDRESS
+  usdcMetadata: string = USDC_ADDRESS,
+  aaUsdcMetadata: string = AA_USDC_METADATA
 ) => {
-  const transaction = {
-    data: {
-      function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::settle_escrow`,
-      typeArguments: [],
-      functionArguments: [escrowId.toString(), usdcMetadata],
-    },
-  };
+  try {
+    // Check that escrow exists first
+    const escrowDetails = await getEscrow(escrowId);
+    if (!escrowDetails) {
+      throw new Error("Escrow not found");
+    }
 
-  return await signer.signAndSubmitTransaction(transaction);
+    console.log("Escrow details for settlement:", escrowDetails);
+    
+    // Call the contract's settle_escrow directly and let it handle the Aave withdrawal
+    // The contract's settle_escrow function should manage the Aave withdrawal internally
+    const settleTransaction = {
+      data: {
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::settle_escrow`,
+        typeArguments: [],
+        functionArguments: [
+          escrowId.toString(), 
+          aaUsdcMetadata,  // aa_usdc_metadata - make sure the order matches contract expectations
+          usdcMetadata,    // usdc_metadata
+        ],
+      },
+    };
+
+    try {
+      return await signer.signAndSubmitTransaction(settleTransaction);
+    } catch (error) {
+      console.error("Error in settle transaction:", error);
+      
+      // Attempt direct settlement without Aave withdrawal
+      console.log("Attempting direct settlement without Aave interaction...");
+      
+      // Try calling the contract's settle_escrow with USDC metadata in both positions
+      // This might work if the contract can handle USDC directly
+      const directSettleTransaction = {
+        data: {
+          function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::settle_escrow`,
+          typeArguments: [],
+          functionArguments: [
+            escrowId.toString(),
+            usdcMetadata,    // Try with USDC metadata first
+            usdcMetadata,    // Try with USDC metadata for both parameters
+          ],
+        },
+      };
+      
+      console.log("Direct settlement transaction payload:", directSettleTransaction);
+      return await signer.signAndSubmitTransaction(directSettleTransaction);
+    }
+  } catch (error) {
+    console.error("Error settling escrow (all attempts failed):", error);
+    throw error;
+  }
 };
 
 /**
@@ -242,7 +290,7 @@ export const getEscrow = async (escrowId: number): Promise<EscrowAgreement | nul
     
     const result = await aptos.view({
       payload: {
-        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_escrow`,
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::get_escrow`,
         typeArguments: [],
         functionArguments: [escrowId.toString()],
       },
@@ -289,7 +337,7 @@ export const getEscrowDepositStatus = async (escrowId: number): Promise<{isDepos
   try {
     const result = await aptos.view({
       payload: {
-        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_escrow_deposit_status`,
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::get_escrow_deposit_status`,
         typeArguments: [],
         functionArguments: [escrowId.toString()]
       },
@@ -322,7 +370,7 @@ export const getEscrowsByLandlord = async (landlord: string): Promise<number[]> 
     
     const result = await aptos.view({
       payload: {
-        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_landlord_escrows`,
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::get_landlord_escrows`,
         typeArguments: [],
         functionArguments: [landlord],
       },
@@ -348,7 +396,7 @@ export const getEscrowsByTenant = async (tenant: string): Promise<number[]> => {
     
     const result = await aptos.view({
       payload: {
-        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_tenant_escrows`,
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::get_tenant_escrows`,
         typeArguments: [],
         functionArguments: [tenant],
       },
@@ -371,7 +419,7 @@ export const getResourceAccountAddress = async (): Promise<string> => {
   try {
     const result = await aptos.view({
       payload: {
-        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_resource_account_address`,
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::get_resource_account_address`,
         typeArguments: [],
         functionArguments: [],
       },
@@ -429,7 +477,7 @@ export const getResourceAccountAAUsdcBalance = async (): Promise<string> => {
         console.log("Trying to fetch balance through contract function...");
         const contractResult = await aptos.view({
           payload: {
-            function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_aave_supplied_amount`,
+            function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::get_aave_supplied_amount`,
             typeArguments: [],
             functionArguments: [],
           },
@@ -488,7 +536,7 @@ export const getContractUsdcBalance = async (): Promise<number> => {
   try {
     const result = await aptos.view({
       payload: {
-        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v3::get_contract_usdc_balance`,
+        function: `${RENT_ESCROW_ADDRESS}::rent_escrow_v4::get_contract_usdc_balance`,
         typeArguments: [],
         functionArguments: [USDC_ADDRESS],
       },

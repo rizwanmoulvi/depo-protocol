@@ -30,7 +30,7 @@ export default function App() {
           <EscrowDashboard />
         ) : (
           <div className="w-screen mx-auto py-12 px-6 bg-white rounded-xl shadow-md">
-            <h2 className="text-3xl font-bold text-center mb-6 text-indigo-700">
+            <h2 className="text-3xl font-bold text-center mb-6 text-black">
               Welcome to Depos Protocol
             </h2>
             
@@ -43,15 +43,15 @@ export default function App() {
 
             <div className="grid md:grid-cols-3 gap-8 mb-10">
               <div className="bg-indigo-50 p-6 rounded-lg">
-                <h3 className="text-xl font-semibold mb-3 text-indigo-700">For Landlords</h3>
+                <h3 className="text-xl font-semibold mb-3 text-black">For Landlords</h3>
                 <p className="text-gray-700">Create rental agreements, specify deposit requirements, and earn yield on security deposits through Aave integration.</p>
               </div>
               <div className="bg-indigo-50 p-6 rounded-lg">
-                <h3 className="text-xl font-semibold mb-3 text-indigo-700">For Tenants</h3>
+                <h3 className="text-xl font-semibold mb-3 text-black">For Tenants</h3>
                 <p className="text-gray-700">Securely deposit funds into escrow with peace of mind that your security deposit will be returned when the rental term ends.</p>
               </div>
               <div className="bg-indigo-50 p-6 rounded-lg">
-                <h3 className="text-xl font-semibold mb-3 text-indigo-700">Security</h3>
+                <h3 className="text-xl font-semibold mb-3 text-black">Security</h3>
                 <p className="text-gray-700">Smart contract enforcement ensures automatic settlement and transparent transactions for all parties.</p>
               </div>
             </div>
